@@ -1,159 +1,83 @@
 (function () {
-  function $(selector, root = document) { return root.querySelector(selector); }
-  function $$(selector, root = document) { return Array.from(root.querySelectorAll(selector)); }
-  function money(num) { return window.AccountCharts.money(num); }
-
-  function iconForCategory(category, type) {
-    if (type === 'income') return '↗';
-    const map = { '餐饮': '🍽', '食材': '🥬', '抽烟': '▫', '购物': '🛍', '日用品': '🧴', '交通': '🚗', '加油': '⛽', '京东采购': 'JD', '淘宝采购': '淘', '抖音采购': '抖', '直接转账': '转' };
-    return map[category] || '•';
-  }
-
-  function formatMeta(item) {
-    return [item.paymentMethod, item.category, item.accountType].filter(Boolean).join(' · ');
-  }
-
-  function recordItem(item) {
-    return `<article class="record-item" data-id="${item.id}">
-      <div class="record-icon">${iconForCategory(item.category, item.type)}</div>
-      <div class="record-main"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(formatMeta(item))}</span></div>
-      <div class="amount ${item.type}">${item.type === 'expense' ? '-' : '+'}${money(item.amount)}</div>
-    </article>`;
-  }
-
-  function escapeHtml(str) {
-    return String(str || '').replace(/[&<>'"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[s]));
-  }
-
-  function toast(text) {
+  function $(selector, root) { return (root || document).querySelector(selector); }
+  function $$(selector, root) { return Array.from((root || document).querySelectorAll(selector)); }
+  function money(value) { return '¥' + (Number(value) || 0).toFixed(2); }
+  function signedMoney(t) { return (t.type === 'income' ? '+' : '-') + money(t.amount); }
+  function toast(message) {
     const el = $('#toast');
-    el.textContent = text;
-    el.classList.add('active');
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => el.classList.remove('active'), 2100);
+    if (!el) return;
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.remove('show'), 1800);
   }
-
-  function applyTheme(theme) {
-    const root = document.documentElement;
-    if (theme === 'light') root.setAttribute('data-theme', 'light');
-    else if (theme === 'dark') root.setAttribute('data-theme', 'dark');
-    else root.removeAttribute('data-theme');
+  function download(filename, text) {
+    const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 800);
   }
-
-  const UI = {
-    $, $$, money, toast, escapeHtml, recordItem,
-    setActiveView(view) {
-      $$('.view').forEach(el => el.classList.toggle('active', el.dataset.view === view));
-      $$('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.nav === view));
-      $('#fabAdd').classList.toggle('hidden', view === 'detail');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    },
-    applyTheme,
-    renderRecent(list) {
-      const target = $('#recentList');
-      const recent = list.slice().sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`)).slice(0, 5);
-      target.innerHTML = recent.length ? recent.map(recordItem).join('') : '<div class="empty">暂无记录，点击右下角记一笔。</div>';
-    },
-    renderGrouped(list) {
-      const target = $('#groupedList');
-      if (!list.length) {
-        target.innerHTML = '<div class="empty">没有找到匹配的账单。</div>';
-        return;
-      }
-      const groups = list.reduce((acc, item) => {
-        (acc[item.date] ||= []).push(item);
-        return acc;
-      }, {});
-      target.innerHTML = Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(date => `<section class="date-group"><h3 class="date-title">${date}</h3><div class="record-list">${groups[date].sort((a, b) => b.time.localeCompare(a.time)).map(recordItem).join('')}</div></section>`).join('');
-    },
-    renderDetail(item) {
-      const target = $('#detailContent');
-      if (!item) {
-        target.innerHTML = '<div class="empty">未找到该账单。</div>';
-        return;
-      }
-      const rows = [
-        ['类型', item.type === 'expense' ? '支出' : '收入'],
-        ['分类', item.category],
-        ['账目类型', item.accountType],
-        ['支付方式', item.paymentMethod],
-        ['交易时间', `${item.date} ${item.time}`],
-        ['备注', item.note || '—'],
-        ['项目', item.project || '—'],
-        ['供应商', item.supplier || '—'],
-        ['发票状态', item.invoiceStatus || '—'],
-        ['报销状态', item.reimbursementStatus || '—'],
-        ['合同状态', item.contractStatus || '—'],
-        ['合同号', item.contractNo || '—']
-      ];
-      target.innerHTML = `<div><span class="badge muted">${item.type === 'expense' ? '支出账单' : '收入账单'}</span><h2>${escapeHtml(item.title)}</h2><div class="detail-amount amount ${item.type}">${item.type === 'expense' ? '-' : '+'}${money(item.amount)}</div></div><div class="detail-grid">${rows.map(([k, v]) => `<div class="detail-row"><span>${k}</span><strong>${escapeHtml(v)}</strong></div>`).join('')}</div><div class="detail-actions"><button class="pill-btn primary" id="btnEditDetail">编辑账单</button><button class="pill-btn danger" id="btnDeleteDetail">删除账单</button></div>`;
-    },
-    populateOptions(settings) {
-      const storage = window.AccountStorage;
-      const paymentSelects = ['#paymentInput', '#defaultPaymentSelect'];
-      paymentSelects.forEach(sel => {
-        const el = $(sel);
-        if (el) el.innerHTML = storage.PAYMENT_METHODS.map(v => `<option value="${v}">${v}</option>`).join('');
+  function iconFor(category) {
+    const map = { '餐饮':'🍜','食材':'🥬','抽烟':'🚬','购物':'🛍️','日用品':'🧴','交通':'🚕','加油':'⛽','人情往来':'🎁','京东采购':'📦','淘宝采购':'🛒','抖音采购':'🎬','直接转账':'↗️','个人采购':'🧾','其他工作支出':'📁','其他':'✨' };
+    return map[category] || '✨';
+  }
+  function recordHtml(t) {
+    return `<div class="record-shell" data-id="${t.id}">
+      <div class="record-actions"><button class="edit" data-action="edit" type="button">编辑</button><button class="delete" data-action="delete" type="button">删除</button></div>
+      <div class="record-item" data-action="open">
+        <div class="category-icon">${iconFor(t.category)}</div>
+        <div class="record-main"><h3>${escapeHtml(t.title)}</h3><p>${escapeHtml(t.paymentMethod)} · ${escapeHtml(t.category)} · ${escapeHtml(t.date)} ${escapeHtml(t.time)}</p></div>
+        <div class="record-amount ${t.type}">${signedMoney(t)}</div>
+      </div>
+    </div>`;
+  }
+  function escapeHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
+  }
+  function renderRecords(container, records, emptyText) {
+    if (!container) return;
+    if (!records.length) { container.innerHTML = `<div class="empty-state">${emptyText || '暂无记录'}</div>`; return; }
+    container.innerHTML = records.map(recordHtml).join('');
+    enableSwipe(container);
+  }
+  function renderGroupedRecords(container, records) {
+    if (!container) return;
+    if (!records.length) { container.innerHTML = '<div class="empty-state">暂无明细记录</div>'; return; }
+    const groups = records.reduce((acc, t) => { (acc[t.date] ||= []).push(t); return acc; }, {});
+    container.innerHTML = Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(date => `<div class="date-group">${date}</div>${groups[date].map(recordHtml).join('')}`).join('');
+    enableSwipe(container);
+  }
+  function enableSwipe(container) {
+    $$('.record-item', container).forEach(item => {
+      let startX = 0, currentX = 0, dragging = false;
+      item.addEventListener('touchstart', e => { startX = e.touches[0].clientX; currentX = startX; dragging = true; }, { passive: true });
+      item.addEventListener('touchmove', e => { if (!dragging) return; currentX = e.touches[0].clientX; const dx = currentX - startX; if (dx < -18) item.style.transform = `translateX(${Math.max(dx, -144)}px)`; }, { passive: true });
+      item.addEventListener('touchend', () => { if (!dragging) return; dragging = false; const dx = currentX - startX; item.style.transform = ''; closeOtherSwipes(item); item.classList.toggle('swiped', dx < -55); });
+      item.addEventListener('click', e => {
+        if (item.classList.contains('swiped')) { item.classList.remove('swiped'); e.stopPropagation(); }
       });
-      $('#defaultPaymentSelect').value = settings.defaultPaymentMethod;
-      $('#displayModeSelect').value = settings.displayMode;
-      $('#defaultViewSelect').value = settings.defaultView;
-      $('#themeSelect').value = settings.theme;
-      $('#showIncomeToggle').checked = !!settings.showIncome;
-      $('#autoBackupToggle').checked = !!settings.autoBackup;
-      $('#categoryManager').innerHTML = [...storage.PERSONAL_CATEGORIES, ...storage.WORK_CATEGORIES].map(v => `<span class="tag">${v}</span>`).join('');
-      $('#paymentManager').innerHTML = storage.PAYMENT_METHODS.map(v => `<span class="tag">${v}</span>`).join('');
-    },
-    setCategories(accountType, current) {
-      const storage = window.AccountStorage;
-      const el = $('#categoryInput');
-      const list = accountType === '收入' ? ['收入'] : (accountType && accountType.includes('工作') ? storage.WORK_CATEGORIES : storage.PERSONAL_CATEGORIES);
-      el.innerHTML = list.map(v => `<option value="${v}">${v}</option>`).join('');
-      if (current && list.includes(current)) el.value = current;
-    },
-    setAccountTypes(type, current) {
-      const el = $('#accountTypeInput');
-      const list = type === 'income' ? ['收入'] : ['个人支出', '工作支出'];
-      el.innerHTML = list.map(v => `<option value="${v}">${v}</option>`).join('');
-      el.value = current && list.includes(current) ? current : list[0];
-      UI.setCategories(el.value);
-    },
-    openSheet(item = null) {
-      const storage = window.AccountStorage;
-      const isEdit = !!item;
-      $('#sheetTitle').textContent = isEdit ? '编辑账单' : '记一笔';
-      $('#entryId').value = item?.id || '';
-      const type = item?.type || 'expense';
-      $$('.form-seg .seg').forEach(btn => btn.classList.toggle('active', btn.dataset.type === type));
-      UI.setAccountTypes(type, item?.accountType);
-      UI.setCategories($('#accountTypeInput').value, item?.category);
-      $('#titleInput').value = item?.title || '';
-      $('#amountInput').value = item?.amount || '';
-      $('#paymentInput').value = item?.paymentMethod || storage.loadSettings().defaultPaymentMethod;
-      $('#dateInput').value = item?.date || storage.nowDate();
-      $('#timeInput').value = item?.time || storage.nowTime();
-      $('#projectInput').value = item?.project || '';
-      $('#supplierInput').value = item?.supplier || '';
-      $('#invoiceInput').value = item?.invoiceStatus || '无需开票';
-      $('#reimbursementInput').value = item?.reimbursementStatus || '无需报销';
-      $('#contractStatusInput').value = item?.contractStatus || '';
-      $('#contractNoInput').value = item?.contractNo || '';
-      $('#noteInput').value = item?.note || '';
-      $('#sheetBackdrop').classList.add('active');
-      $('#entrySheet').classList.add('active');
-      $('#entrySheet').setAttribute('aria-hidden', 'false');
-      setTimeout(() => $('#amountInput').focus(), 80);
-    },
-    closeSheet() {
-      $('#sheetBackdrop').classList.remove('active');
-      $('#entrySheet').classList.remove('active');
-      $('#entrySheet').setAttribute('aria-hidden', 'true');
-      $('#entryForm').reset();
-    },
-    fillAIPrompt() {
-      $('#aiPrompt').value = `请根据我提供的自然语言消费记录，生成可导入 Shawn 记账本 Web App 的 JSON。\n\n要求：\n1. 只输出 JSON，不要输出解释。\n2. JSON 顶层格式为 {"transactions":[...]}。\n3. 每条记录字段：id,type,accountType,category,title,amount,paymentMethod,date,time,project,supplier,invoiceStatus,reimbursementStatus,contractStatus,contractNo,note,createdAt,updatedAt。\n4. type 只能是 expense 或 income；accountType 优先使用 个人支出 / 工作支出 / 收入。\n5. 个人支出分类：加油、餐饮、购物、日用品、抽烟、人情往来、食材、交通、其他。\n6. 工作支出分类：直接转账、淘宝采购、京东采购、个人采购、抖音采购、其他工作支出。\n7. 支付方式：银行卡付款、微信支付、微信转账、支付宝花呗、京东白条、抖音支付/抖音采购、现金、其他。\n8. 淘宝采购默认支付宝花呗，京东采购默认京东白条，抖音采购默认抖音支付/抖音采购，支付宝默认理解为支付宝花呗。\n9. 工作支出尽量保留项目、供应商、发票状态、合同状态、合同号、报销状态。\n10. 今天/昨天/前天必须转换成实际日期。`;
-    }
-  };
-
-  window.AccountUI = UI;
+    });
+  }
+  function closeOtherSwipes(except) { $$('.record-item.swiped').forEach(el => { if (el !== except) el.classList.remove('swiped'); }); }
+  function setTheme(theme) { document.documentElement.setAttribute('data-theme', theme || 'system'); }
+  function setActiveNav(view) {
+    $$('.bottom-nav button').forEach(btn => btn.classList.toggle('active', btn.dataset.nav === view));
+    $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
+    $('#fabAdd')?.classList.toggle('hidden', view === 'settings' || view === 'transaction');
+  }
+  function optionButtons(container, values, active, attr) {
+    if (!container) return;
+    container.innerHTML = values.map(v => `<button class="chip ${v === active ? 'active' : ''}" data-${attr}="${escapeHtml(v)}" type="button">${escapeHtml(v)}</button>`).join('');
+  }
+  function formatDetail(t) {
+    const lines = [
+      ['类型', t.type === 'income' ? '收入' : '支出'], ['账目类型', t.accountType], ['分类', t.category], ['支付方式', t.paymentMethod], ['交易时间', `${t.date} ${t.time}`], ['项目', t.project || '-'], ['供应商', t.supplier || '-'], ['发票状态', t.invoiceStatus || '-'], ['报销状态', t.reimbursementStatus || '-'], ['合同状态', t.contractStatus || '-'], ['合同号', t.contractNo || '-'], ['备注', t.note || '-']
+    ];
+    return `<div class="detail-title"><h2>${escapeHtml(t.title)}</h2><div class="big-amount ${t.type}">${signedMoney(t)}</div></div><div class="detail-grid">${lines.map(l=>`<div class="detail-line"><span>${l[0]}</span><b>${escapeHtml(l[1])}</b></div>`).join('')}</div><div class="detail-actions"><button class="edit" data-detail-action="edit" type="button">编辑账单</button><button class="delete" data-detail-action="delete" type="button">删除账单</button></div>`;
+  }
+  function aiPrompt() {
+    return `请根据我的自然语言消费描述，生成可导入 Shawn 记账本的 JSON。\n\n规则：\n1. 只输出 JSON，不要输出解释。\n2. JSON 可以是数组，也可以是 {"transactions": []}。\n3. 字段包括 id、type、accountType、category、title、amount、paymentMethod、date、time、project、supplier、invoiceStatus、reimbursementStatus、contractStatus、contractNo、note。\n4. type 只能是 expense 或 income。\n5. accountType 使用“个人支出”或“工作支出”。\n6. 个人分类：加油、餐饮、购物、日用品、抽烟、人情往来、食材、交通、其他。\n7. 工作分类：直接转账、淘宝采购、京东采购、个人采购、抖音采购、其他工作支出。\n8. 淘宝采购默认支付宝花呗；京东采购默认京东白条；抖音采购默认抖音支付 / 抖音采购；支付宝默认理解为支付宝花呗。\n9. 工作支出尽量保留项目、供应商、发票状态、合同状态、合同号、报销状态。\n10. 今天、昨天、前天要转换为实际日期。`;
+  }
+  window.AccountUI = { $, $$, money, signedMoney, toast, download, renderRecords, renderGroupedRecords, setTheme, setActiveNav, optionButtons, formatDetail, aiPrompt, escapeHtml, closeOtherSwipes };
 })();

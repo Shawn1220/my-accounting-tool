@@ -1,78 +1,66 @@
 (function () {
-  const COLORS = ['#5b5ce2', '#30b86f', '#f59f28', '#ef4d56', '#25a7c8', '#9b7bff', '#6b7c93', '#d87a9b'];
-
-  function money(num) {
-    return `¥${Number(num || 0).toFixed(2)}`;
-  }
-
-  function groupSum(list, field) {
-    return list.reduce((acc, item) => {
-      const key = item[field] || '其他';
-      acc[key] = (acc[key] || 0) + Number(item.amount || 0);
+  const palette = ['#6767f0', '#31b46b', '#f59e0b', '#ef4444', '#39a9f9', '#a855f7', '#14b8a6', '#f97316'];
+  function money(v) { return '¥' + (Number(v) || 0).toFixed(2); }
+  function sumBy(items, key) {
+    return items.reduce((acc, item) => {
+      const k = item[key] || '其他';
+      acc[k] = (acc[k] || 0) + Number(item.amount || 0);
       return acc;
     }, {});
   }
-
-  function renderDonut(container, legend, dataMap) {
-    if (!container || !legend) return;
-    const entries = Object.entries(dataMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-    const total = entries.reduce((sum, [, value]) => sum + value, 0);
-    if (!total) {
-      container.innerHTML = '<div class="empty">暂无数据</div>';
-      legend.innerHTML = '';
-      return;
-    }
-    const radius = 46;
-    const circumference = 2 * Math.PI * radius;
-    let offset = 0;
-    const circles = entries.map(([label, value], index) => {
-      const dash = value / total * circumference;
-      const circle = `<circle r="${radius}" cx="64" cy="64" fill="transparent" stroke="${COLORS[index % COLORS.length]}" stroke-width="18" stroke-linecap="round" stroke-dasharray="${dash} ${circumference - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 64 64)"/>`;
-      offset += dash;
-      return circle;
+  function renderDonut(el, items, key) {
+    if (!el) return;
+    const data = sumBy(items.filter(x => x.type === 'expense'), key);
+    const rows = Object.entries(data).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const total = rows.reduce((s, r)=>s+r[1],0);
+    if (!total) { el.innerHTML = '<div class="empty-state">暂无支出数据</div>'; return; }
+    let offset = 25;
+    const circles = rows.map((row, i) => {
+      const pct = row[1] / total * 100;
+      const html = `<circle r="15.9" cx="18" cy="18" fill="transparent" stroke="${palette[i % palette.length]}" stroke-width="6" stroke-dasharray="${pct} ${100-pct}" stroke-dashoffset="-${offset}" />`;
+      offset += pct;
+      return html;
     }).join('');
-    container.innerHTML = `<svg viewBox="0 0 128 128" aria-label="环形图"><circle r="46" cx="64" cy="64" fill="transparent" stroke="rgba(128,128,128,0.16)" stroke-width="18"/>${circles}<text x="64" y="59" text-anchor="middle" font-size="14" fill="currentColor">合计</text><text x="64" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">${money(total).replace('¥','')}</text></svg>`;
-    legend.innerHTML = entries.map(([label, value], index) => `<div class="legend-item"><span class="legend-left"><i class="dot" style="background:${COLORS[index % COLORS.length]}"></i><span>${label}</span></span><strong>${money(value)}</strong></div>`).join('');
+    const legend = rows.map((row, i) => `<div class="legend-row"><i class="dot" style="background:${palette[i % palette.length]}"></i><span>${row[0]}</span><b>${money(row[1])}</b></div>`).join('');
+    el.innerHTML = `<svg class="donut-svg" viewBox="0 0 36 36"><circle r="15.9" cx="18" cy="18" fill="transparent" stroke="rgba(130,140,160,.18)" stroke-width="6" />${circles}<text x="18" y="17" text-anchor="middle" font-size="3.5" fill="currentColor">支出</text><text x="18" y="22" text-anchor="middle" font-size="3.4" font-weight="700" fill="currentColor">${Math.round(total)}</text></svg><div class="legend">${legend}</div>`;
   }
-
-  function renderBars(container, dataMap) {
-    if (!container) return;
-    const entries = Object.entries(dataMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-    const max = Math.max(1, ...entries.map(([, v]) => v));
-    if (!entries.length) {
-      container.innerHTML = '<div class="empty">暂无数据</div>';
-      return;
-    }
-    container.innerHTML = entries.map(([label, value], index) => {
-      const pct = Math.max(4, value / max * 100);
-      return `<div class="bar-row"><div class="bar-top"><span>${label}</span><strong>${money(value)}</strong></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[index % COLORS.length]}"></div></div></div>`;
-    }).join('');
+  function renderBars(el, items, key) {
+    if (!el) return;
+    const data = sumBy(items.filter(x => x.type === 'expense'), key);
+    const rows = Object.entries(data).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const max = Math.max(...rows.map(r=>r[1]), 0);
+    if (!max) { el.innerHTML = '<div class="empty-state">暂无数据</div>'; return; }
+    el.innerHTML = rows.map((row, i) => `<div class="bar-row"><span>${row[0]}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(5, row[1]/max*100)}%;background:${palette[i % palette.length]}"></div></div><b>${money(row[1])}</b></div>`).join('');
   }
-
-  function renderTrend(container, transactions) {
-    if (!container) return;
+  function renderTrend(el, items) {
+    if (!el) return;
     const today = new Date();
     const days = [];
-    for (let i = 6; i >= 0; i -= 1) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      days.push({ key, label: `${d.getMonth() + 1}/${d.getDate()}`, value: 0 });
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today); d.setDate(today.getDate() - i);
+      days.push(d.toISOString().slice(0,10));
     }
-    const byDate = new Map(days.map(d => [d.key, d]));
-    transactions.filter(t => t.type === 'expense').forEach(t => {
-      if (byDate.has(t.date)) byDate.get(t.date).value += Number(t.amount || 0);
-    });
-    const max = Math.max(1, ...days.map(d => d.value));
-    const w = 340, h = 160, pad = 24;
-    const points = days.map((d, i) => {
-      const x = pad + i * ((w - pad * 2) / 6);
-      const y = h - pad - (d.value / max) * (h - pad * 2);
-      return { ...d, x, y };
-    });
-    const path = points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
-    container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="最近7天支出趋势"><path d="M ${pad} ${h - pad} H ${w - pad}" stroke="rgba(128,128,128,0.22)"/><path d="${path}" fill="none" stroke="var(--primary)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="5" fill="var(--primary)"/><text x="${p.x}" y="${h - 5}" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">${p.label}</text>`).join('')}</svg>`;
+    const values = days.map(day => items.filter(x => x.type === 'expense' && x.date === day).reduce((s,x)=>s+Number(x.amount||0),0));
+    const max = Math.max(...values, 1);
+    const points = values.map((v,i)=>[12 + i * 46, 128 - (v / max) * 94]);
+    const poly = points.map(p=>p.join(',')).join(' ');
+    const circles = points.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${palette[i % palette.length]}"><title>${days[i]} ${money(values[i])}</title></circle>`).join('');
+    const labels = points.map((p,i)=>`<text x="${p[0]}" y="150" text-anchor="middle" font-size="10" fill="currentColor" opacity=".65">${days[i].slice(5).replace('-','/')}</text>`).join('');
+    el.innerHTML = `<svg viewBox="0 0 300 160" preserveAspectRatio="none"><line x1="12" y1="128" x2="288" y2="128" stroke="currentColor" opacity=".13"/><polyline points="${poly}" fill="none" stroke="#6767f0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${circles}${labels}</svg>`;
   }
-
-  window.AccountCharts = { COLORS, money, groupSum, renderDonut, renderBars, renderTrend };
+  function renderWorkStatus(el, items) {
+    if (!el) return;
+    const work = items.filter(x => x.accountType === '工作支出' && x.type === 'expense');
+    const keys = ['待报销','已报销','待开票','已开票'];
+    const data = {
+      '待报销': work.filter(x => x.reimbursementStatus === '待报销').reduce((s,x)=>s+x.amount,0),
+      '已报销': work.filter(x => x.reimbursementStatus === '已报销').reduce((s,x)=>s+x.amount,0),
+      '待开票': work.filter(x => x.invoiceStatus === '待开票').reduce((s,x)=>s+x.amount,0),
+      '已开票': work.filter(x => x.invoiceStatus === '已开票').reduce((s,x)=>s+x.amount,0)
+    };
+    const max = Math.max(...Object.values(data), 0);
+    if (!max) { el.innerHTML = '<div class="empty-state">暂无工作支出状态数据</div>'; return; }
+    el.innerHTML = keys.map((k,i)=>`<div class="bar-row"><span>${k}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(5,data[k]/max*100)}%;background:${palette[i % palette.length]}"></div></div><b>${money(data[k])}</b></div>`).join('');
+  }
+  window.AccountCharts = { renderDonut, renderBars, renderTrend, renderWorkStatus, money };
 })();

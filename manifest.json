@@ -1,25 +1,15 @@
 {
   "name": "Shawn 记账本",
   "short_name": "记账本",
-  "description": "适合部署到 GitHub Pages 的 Shawn Tools 记账本 Web App",
+  "description": "适合 GitHub Pages 部署的轻量记账本 PWA。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#f6f7fb",
-  "theme_color": "#5b5ce2",
+  "background_color": "#f5f6fb",
+  "theme_color": "#6767f0",
+  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "./assets/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "./assets/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "./assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

@@ -8,6 +8,8 @@
 
   const defaultSettings = {
     theme: 'system',
+    accent: 'mint',
+    monthlyBudget: 3000,
     defaultPayment: '微信支付',
     defaultPage: 'home',
     displayMode: 'comfortable',
@@ -100,7 +102,7 @@
     return { count: normalized.length, data: next };
   }
   function exportData() {
-    return JSON.stringify({ app: 'Shawn Account Book', version: 'V1-1', exportedAt: new Date().toISOString(), transactions: loadData(), settings: loadSettings() }, null, 2);
+    return JSON.stringify({ app: 'Shawn Account Book', version: 'V1-2', exportedAt: new Date().toISOString(), transactions: loadData(), settings: loadSettings() }, null, 2);
   }
   function resetDemo() { saveData(demoTransactions.map(x => normalizeTransaction(x))); return loadData(); }
   function clearData() { saveData([]); return []; }

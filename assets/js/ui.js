@@ -3,13 +3,23 @@
   function $$(selector, root) { return Array.from((root || document).querySelectorAll(selector)); }
   function money(value) { return '¥' + (Number(value) || 0).toFixed(2); }
   function signedMoney(t) { return (t.type === 'income' ? '+' : '-') + money(t.amount); }
-  function toast(message) {
+  function toast(message, actionLabel, action) {
     const el = $('#toast');
     if (!el) return;
-    el.textContent = message;
+    el.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = message;
+    el.appendChild(span);
+    if (actionLabel && typeof action === 'function') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = actionLabel;
+      btn.onclick = () => { el.classList.remove('show'); action(); };
+      el.appendChild(btn);
+    }
     el.classList.add('show');
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove('show'), 1800);
+    toast.timer = setTimeout(() => el.classList.remove('show'), actionLabel ? 5000 : 1800);
   }
   function download(filename, text) {
     const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
@@ -19,7 +29,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 800);
   }
   function iconFor(category) {
-    const map = { '餐饮':'🍜','食材':'🥬','抽烟':'🚬','购物':'🛍️','日用品':'🧴','交通':'🚕','加油':'⛽','人情往来':'🎁','京东采购':'📦','淘宝采购':'🛒','抖音采购':'🎬','直接转账':'↗️','个人采购':'🧾','其他工作支出':'📁','其他':'✨' };
+    const map = { '餐饮':'🍜','食材':'🥬','抽烟':'🚬','购物':'🛍️','日用品':'🧴','交通':'🚕','加油':'⛽','人情往来':'🎁','京东采购':'📦','淘宝采购':'🛒','抖音采购':'🎬','直接转账':'💸','个人采购':'🧾','其他工作支出':'📁','其他':'✨' };
     return map[category] || '✨';
   }
   function recordHtml(t) {
@@ -60,11 +70,11 @@
     });
   }
   function closeOtherSwipes(except) { $$('.record-item.swiped').forEach(el => { if (el !== except) el.classList.remove('swiped'); }); }
-  function setTheme(theme) { document.documentElement.setAttribute('data-theme', theme || 'system'); }
+  function setTheme(theme, accent) { document.documentElement.setAttribute('data-theme', theme || 'system'); document.documentElement.setAttribute('data-accent', accent || 'mint'); }
   function setActiveNav(view) {
     $$('.bottom-nav button').forEach(btn => btn.classList.toggle('active', btn.dataset.nav === view));
     $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
-    $('#fabAdd')?.classList.toggle('hidden', view === 'settings' || view === 'transaction');
+    $('#fabAdd')?.classList.toggle('hidden', view === 'my' || view === 'transaction');
   }
   function optionButtons(container, values, active, attr) {
     if (!container) return;

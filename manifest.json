@@ -1,12 +1,12 @@
 {
   "name": "Shawn 记账本",
   "short_name": "记账本",
-  "description": "适合 GitHub Pages 部署的轻量记账本 PWA。",
+  "description": "适合 GitHub Pages 部署的轻量、清爽、适合 GitHub Pages 部署的记账本 PWA。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f5f6fb",
-  "theme_color": "#6767f0",
+  "theme_color": "#5bc8bd",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "./assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },

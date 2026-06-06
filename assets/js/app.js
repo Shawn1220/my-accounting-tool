@@ -6,16 +6,16 @@
 
   let transactions = S.loadData();
   let settings = S.loadSettings();
-  let state = { view: settings.defaultPage || 'home', type: 'expense', accountType: '个人支出', category: '餐饮', paymentMethod: settings.defaultPayment || '微信支付', detailFilter: 'all', detailSearch: '', selectedId: null };
+  let state = { view: settings.defaultPage || 'home', type: 'expense', accountType: '个人支出', category: '餐饮', paymentMethod: settings.defaultPayment || '微信支付', detailFilter: 'all', detailSearch: '', selectedId: null, lastDeleted: null, undoTimer: null };
   const quickAmounts = [10, 20, 50, 100, 500, 1000];
 
   function init() {
-    UI.setTheme(settings.theme);
+    UI.setTheme(settings.theme, settings.accent);
     renderQuickAmounts();
     bindEvents();
     populateSettings();
     refreshAll();
-    navigate(['home','details','stats','settings'].includes(state.view) ? state.view : 'home');
+    navigate(['home','details','stats','my'].includes(state.view) ? state.view : 'home');
     setupPwa();
   }
 
@@ -26,7 +26,7 @@
     $('#sheetOverlay').addEventListener('click', closeSheet);
     $('#entryForm').addEventListener('submit', saveEntry);
     $('#backBtn').addEventListener('click', handleBackToTools);
-    $('#moreBtn').addEventListener('click', () => navigate('settings'));
+    $('#moreBtn').addEventListener('click', e => { e.stopPropagation(); toggleMoreMenu(); });
     $('#globalSearchBtn').addEventListener('click', () => { navigate('details'); setTimeout(() => $('#detailSearch')?.focus(), 120); });
     $('#privacyBtn').addEventListener('click', togglePrivacy);
 
@@ -36,6 +36,7 @@
     $$('[data-home-panel]').forEach(btn => btn.addEventListener('click', () => switchHomePanel(btn.dataset.homePanel)));
 
     document.body.addEventListener('click', handleDelegatedClick);
+    document.addEventListener('click', e => { if (!e.target.closest('#moreMenu') && !e.target.closest('#moreBtn')) closeMoreMenu(); });
     $('#defaultPaymentSelect').addEventListener('change', e => updateSetting('defaultPayment', e.target.value));
     $('#defaultPageSelect').addEventListener('change', e => updateSetting('defaultPage', e.target.value));
     $('#displayModeSelect').addEventListener('change', e => updateSetting('displayMode', e.target.value));
@@ -72,11 +73,37 @@
     if (chipAccount) { setAccountType(chipAccount.dataset.account); return; }
     const themeBtn = e.target.closest('[data-theme]');
     if (themeBtn) { updateSetting('theme', themeBtn.dataset.theme); return; }
+    const menuAction = e.target.closest('[data-menu-action]');
+    if (menuAction) { handleMenuAction(menuAction.dataset.menuAction); return; }
+    const accentBtn = e.target.closest('[data-accent]');
+    if (accentBtn) { updateSetting('accent', accentBtn.dataset.accent); return; }
     const detailAction = e.target.closest('[data-detail-action]');
     if (detailAction && state.selectedId) {
       if (detailAction.dataset.detailAction === 'edit') openEditEntry(state.selectedId);
       if (detailAction.dataset.detailAction === 'delete') deleteTransaction(state.selectedId, true);
     }
+  }
+
+  function toggleMoreMenu() {
+    const menu = $('#moreMenu');
+    if (!menu) return;
+    const open = menu.classList.toggle('open');
+    menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+  function closeMoreMenu() {
+    const menu = $('#moreMenu');
+    if (!menu) return;
+    menu.classList.remove('open');
+    menu.setAttribute('aria-hidden', 'true');
+  }
+  function handleMenuAction(action) {
+    closeMoreMenu();
+    if (action === 'add') openAddEntry();
+    if (action === 'search') { navigate('details'); setTimeout(() => $('#detailSearch')?.focus(), 120); }
+    if (action === 'export') exportJson();
+    if (action === 'import') $('#importFileInput').click();
+    if (action === 'theme') navigate('my');
+    if (action === 'my') navigate('my');
   }
 
   function handleBackToTools() {
@@ -93,11 +120,13 @@
   }
 
   function navigate(view) {
+    if (view === 'settings') view = 'my';
+    closeMoreMenu();
     state.view = view;
     UI.setActiveNav(view);
     if (view === 'stats') renderStats();
     if (view === 'details') renderDetails();
-    if (view === 'settings') populateSettings();
+    if (view === 'my') populateSettings();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -152,6 +181,9 @@
     $('#homeMonthIncome').textContent = C.money(s.income);
     $('#homeMonthBalance').textContent = C.money(s.balance);
     $('#homeTodayExpense').textContent = C.money(todayExpense);
+    const budget = Number(settings.monthlyBudget || 3000);
+    $('#homeBudgetText').textContent = `${C.money(s.expense)} / ${C.money(budget)}`;
+    $('#homeBudgetBar').style.width = Math.min(100, budget ? (s.expense / budget * 100) : 0).toFixed(1) + '%';
     ['#homeMonthExpense','#homeMonthIncome','#homeMonthBalance','#homeTodayExpense'].forEach(sel => $(sel)?.classList.add('money-value'));
     document.body.classList.toggle('masked', !!settings.privacyMode);
     $('#privacyBtn').textContent = settings.privacyMode ? '隐藏中' : '显示';
@@ -316,21 +348,34 @@
   function deleteTransaction(id, backAfter) {
     const t = transactions.find(x=>x.id===id);
     if (!t) return;
-    if (!confirm(`确认删除「${t.title}」吗？删除后不能恢复。`)) return;
+    const index = transactions.findIndex(x => x.id === id);
+    state.lastDeleted = { item: t, index };
     transactions = transactions.filter(x=>x.id!==id);
     if (backAfter || state.view === 'transaction') { state.selectedId = null; navigate('details'); }
     refreshAll();
-    UI.toast('账单已删除');
+    clearTimeout(state.undoTimer);
+    UI.toast('账单已删除', '撤销', undoDelete);
+    state.undoTimer = setTimeout(() => { state.lastDeleted = null; }, 5000);
+  }
+
+  function undoDelete() {
+    if (!state.lastDeleted) return;
+    const { item, index } = state.lastDeleted;
+    transactions.splice(Math.max(0, index), 0, item);
+    state.lastDeleted = null;
+    refreshAll();
+    UI.toast('已撤销删除');
   }
 
   function populateSettings() {
     const paymentSelect = $('#defaultPaymentSelect');
     paymentSelect.innerHTML = settings.paymentMethods.map(p=>`<option value="${UI.escapeHtml(p)}">${UI.escapeHtml(p)}</option>`).join('');
     paymentSelect.value = settings.defaultPayment;
-    $('#defaultPageSelect').value = settings.defaultPage;
+    $('#defaultPageSelect').value = settings.defaultPage === 'settings' ? 'my' : settings.defaultPage;
     $('#displayModeSelect').value = settings.displayMode;
     $('#showIncomeToggle').checked = !!settings.showIncome;
     $$('#themeOptions .chip').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === settings.theme));
+    $$('#accentOptions [data-accent]').forEach(btn => btn.classList.toggle('active', btn.dataset.accent === (settings.accent || 'mint')));
     $('#categoryTags').innerHTML = settings.categories.map(c=>`<button class="chip" type="button">${UI.escapeHtml(c)}</button>`).join('');
     $('#paymentTags').innerHTML = settings.paymentMethods.map(p=>`<button class="chip" type="button">${UI.escapeHtml(p)}</button>`).join('');
     $('#aiPromptText').value = UI.aiPrompt();
@@ -340,7 +385,7 @@
   function updateSetting(key, value) {
     settings[key] = value;
     S.saveSettings(settings);
-    if (key === 'theme') UI.setTheme(value);
+    if (key === 'theme' || key === 'accent') UI.setTheme(settings.theme, settings.accent);
     populateSettings();
     renderHome();
     UI.toast('设置已保存');

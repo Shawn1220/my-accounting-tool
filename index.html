@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#6767f0" />
+  <meta name="theme-color" content="#5bc8bd" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="记账本" />
@@ -26,6 +26,14 @@
         <button id="globalSearchBtn" class="icon-btn" type="button" aria-label="搜索">⌕</button>
         <button id="moreBtn" class="icon-btn" type="button" aria-label="更多">⋯</button>
       </div>
+      <div id="moreMenu" class="more-menu" aria-hidden="true">
+        <button data-menu-action="add" type="button"><span>＋</span>快速记一笔</button>
+        <button data-menu-action="search" type="button"><span>⌕</span>搜索账单</button>
+        <button data-menu-action="export" type="button"><span>⇩</span>导出 JSON</button>
+        <button data-menu-action="import" type="button"><span>⇧</span>导入 JSON</button>
+        <button data-menu-action="theme" type="button"><span>◐</span>主题外观</button>
+        <button data-menu-action="my" type="button"><span>☺</span>进入我的</button>
+      </div>
     </header>
 
     <main class="main-content">
@@ -42,6 +50,10 @@
             <div><span>本月收入</span><b id="homeMonthIncome">¥0.00</b></div>
             <div><span>本月结余</span><b id="homeMonthBalance">¥0.00</b></div>
             <div><span>今日支出</span><b id="homeTodayExpense">¥0.00</b></div>
+          </div>
+          <div class="budget-strip">
+            <div><span>本月预算</span><b id="homeBudgetText">¥0 / ¥3000</b></div>
+            <div class="budget-track"><i id="homeBudgetBar"></i></div>
           </div>
         </section>
 
@@ -103,21 +115,31 @@
         <div class="card chart-card"><div class="section-head compact"><h2>工作支出状态</h2></div><div id="workStatusBars" class="bar-list"></div></div>
       </section>
 
-      <section id="view-settings" class="view" data-view="settings">
-        <div class="page-heading"><div><h2>设置</h2><p>分类、支付方式、主题和数据管理</p></div></div>
+      <section id="view-my" class="view" data-view="my">
+        <div class="page-heading"><div><h2>我的</h2><p>外观、数据、分类和 Shawn Tools 状态</p></div></div>
         <div class="settings-group">
           <h3>基础设置</h3>
           <label class="setting-row"><span>默认支付方式</span><select id="defaultPaymentSelect"></select></label>
-          <label class="setting-row"><span>默认打开页面</span><select id="defaultPageSelect"><option value="home">首页</option><option value="details">明细</option><option value="stats">统计</option><option value="settings">设置</option></select></label>
+          <label class="setting-row"><span>默认打开页面</span><select id="defaultPageSelect"><option value="home">首页</option><option value="details">明细</option><option value="stats">统计</option><option value="my">我的</option></select></label>
           <label class="setting-row"><span>账单显示模式</span><select id="displayModeSelect"><option value="compact">紧凑</option><option value="comfortable">舒适</option></select></label>
           <label class="setting-row"><span>显示收入</span><input id="showIncomeToggle" type="checkbox" /></label>
         </div>
         <div class="settings-group">
           <h3>主题设置</h3>
+          <div class="sub-label">显示模式</div>
           <div class="theme-options" id="themeOptions">
             <button class="chip" data-theme="system" type="button">跟随系统</button>
             <button class="chip" data-theme="light" type="button">浅色模式</button>
             <button class="chip" data-theme="dark" type="button">深色模式</button>
+          </div>
+          <div class="sub-label">主题色</div>
+          <div class="accent-options" id="accentOptions">
+            <button class="accent-dot" data-accent="mint" type="button"><i></i><span>薄荷绿</span></button>
+            <button class="accent-dot" data-accent="sky" type="button"><i></i><span>天空蓝</span></button>
+            <button class="accent-dot" data-accent="indigo" type="button"><i></i><span>蓝紫色</span></button>
+            <button class="accent-dot" data-accent="orange" type="button"><i></i><span>奶油橙</span></button>
+            <button class="accent-dot" data-accent="pink" type="button"><i></i><span>樱花粉</span></button>
+            <button class="accent-dot" data-accent="graphite" type="button"><i></i><span>石墨灰</span></button>
           </div>
         </div>
         <div class="settings-group">
@@ -159,7 +181,7 @@
       <button class="active" data-nav="home" type="button"><span>⌂</span>首页</button>
       <button data-nav="details" type="button"><span>≡</span>明细</button>
       <button data-nav="stats" type="button"><span>◌</span>统计</button>
-      <button data-nav="settings" type="button"><span>⚙</span>设置</button>
+      <button data-nav="my" type="button"><span>☺</span>我的</button>
     </nav>
 
     <button id="fabAdd" class="fab" type="button" aria-label="记一笔">＋</button>

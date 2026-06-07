@@ -6,6 +6,15 @@
   const workCategories = ['直接转账','淘宝采购','京东采购','个人采购','抖音采购','其他工作支出'];
   const defaultPayments = ['银行卡付款','微信支付','微信转账','支付宝花呗','京东白条','抖音支付 / 抖音采购','现金','其他'];
 
+  const defaultTemplates = [
+    { title:'买烟', amount:64, category:'抽烟', accountType:'个人支出', paymentMethod:'微信支付', note:'四包烟' },
+    { title:'早餐', amount:18, category:'餐饮', accountType:'个人支出', paymentMethod:'微信支付' },
+    { title:'午饭', amount:35, category:'餐饮', accountType:'个人支出', paymentMethod:'支付宝花呗' },
+    { title:'菜市场', amount:20.9, category:'食材', accountType:'个人支出', paymentMethod:'现金', supplier:'菜市场' },
+    { title:'交通', amount:12, category:'交通', accountType:'个人支出', paymentMethod:'微信支付' },
+    { title:'京东购物', amount:100, category:'购物', accountType:'个人支出', paymentMethod:'京东白条', supplier:'京东' }
+  ];
+
   const defaultSettings = {
     theme: 'system',
     accent: 'mint',
@@ -15,17 +24,18 @@
     displayMode: 'comfortable',
     showIncome: true,
     privacyMode: false,
-    categories: [...personalCategories, ...workCategories],
-    paymentMethods: [...defaultPayments]
+    categories: [...personalCategories],
+    paymentMethods: [...defaultPayments],
+    quickTemplates: [...defaultTemplates]
   };
 
   const demoTransactions = [
     { id:'txn_demo_001', type:'expense', accountType:'个人支出', category:'餐饮', title:'早餐', amount:18, paymentMethod:'微信支付', date:'2026-06-06', time:'08:12', project:'', supplier:'', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'', createdAt:'2026-06-06T08:12:00', updatedAt:'2026-06-06T08:12:00' },
     { id:'txn_demo_002', type:'expense', accountType:'个人支出', category:'抽烟', title:'买烟', amount:64, paymentMethod:'微信支付', date:'2026-06-06', time:'10:15', project:'', supplier:'', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'四包烟', createdAt:'2026-06-06T10:15:00', updatedAt:'2026-06-06T10:15:00' },
-    { id:'txn_demo_003', type:'expense', accountType:'个人支出', category:'食材', title:'菜市场', amount:20.9, paymentMethod:'现金', date:'2026-06-06', time:'18:23', project:'', supplier:'菜市场', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'', createdAt:'2026-06-06T18:23:00', updatedAt:'2026-06-06T18:23:00' },
-    { id:'txn_demo_004', type:'expense', accountType:'工作支出', category:'京东采购', title:'京东采购', amount:1000, paymentMethod:'京东白条', date:'2026-06-05', time:'14:35', project:'M013', supplier:'京东', invoiceStatus:'已开票', reimbursementStatus:'待报销', contractStatus:'无合同', contractNo:'', note:'示例工作采购记录', createdAt:'2026-06-05T14:35:00', updatedAt:'2026-06-05T14:35:00' },
+    { id:'txn_demo_003', type:'expense', accountType:'个人支出', category:'食材', title:'菜市场', amount:20.9, paymentMethod:'现金', date:'2026-06-06', time:'18:23', project:'', supplier:'菜市场', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'买菜', createdAt:'2026-06-06T18:23:00', updatedAt:'2026-06-06T18:23:00' },
+    { id:'txn_demo_004', type:'expense', accountType:'个人支出', category:'交通', title:'地铁', amount:8, paymentMethod:'微信支付', date:'2026-06-05', time:'09:05', project:'', supplier:'', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'', createdAt:'2026-06-05T09:05:00', updatedAt:'2026-06-05T09:05:00' },
     { id:'txn_demo_005', type:'expense', accountType:'个人支出', category:'餐饮', title:'午饭', amount:35, paymentMethod:'支付宝花呗', date:'2026-06-05', time:'12:10', project:'', supplier:'', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'', createdAt:'2026-06-05T12:10:00', updatedAt:'2026-06-05T12:10:00' },
-    { id:'txn_demo_006', type:'income', accountType:'个人支出', category:'其他', title:'报销到账', amount:600, paymentMethod:'银行卡付款', date:'2026-06-04', time:'16:40', project:'M013', supplier:'', invoiceStatus:'无需开票', reimbursementStatus:'已报销', contractStatus:'', contractNo:'', note:'示例收入', createdAt:'2026-06-04T16:40:00', updatedAt:'2026-06-04T16:40:00' }
+    { id:'txn_demo_006', type:'expense', accountType:'个人支出', category:'购物', title:'京东购物', amount:100, paymentMethod:'京东白条', date:'2026-06-04', time:'20:40', project:'', supplier:'京东', invoiceStatus:'无需开票', reimbursementStatus:'无需报销', contractStatus:'', contractNo:'', note:'个人购物示例', createdAt:'2026-06-04T20:40:00', updatedAt:'2026-06-04T20:40:00' }
   ];
 
   function safeParse(value, fallback) {
@@ -75,6 +85,7 @@
       contractStatus: t.contractStatus || '',
       contractNo: t.contractNo || '',
       note: t.note || '',
+      deletedAt: t.deletedAt || '',
       createdAt,
       updatedAt: t.updatedAt || new Date().toISOString()
     };
@@ -88,7 +99,7 @@
   function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
   function loadSettings() {
     const saved = safeParse(localStorage.getItem(SETTINGS_KEY), {});
-    return { ...defaultSettings, ...saved, categories: saved.categories || defaultSettings.categories, paymentMethods: saved.paymentMethods || defaultSettings.paymentMethods };
+    return { ...defaultSettings, ...saved, categories: saved.categories || defaultSettings.categories, paymentMethods: saved.paymentMethods || defaultSettings.paymentMethods, quickTemplates: saved.quickTemplates || defaultSettings.quickTemplates };
   }
   function saveSettings(settings) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
   function importData(json, mode) {
@@ -102,7 +113,7 @@
     return { count: normalized.length, data: next };
   }
   function exportData() {
-    return JSON.stringify({ app: 'Shawn Account Book', version: 'V1-2', exportedAt: new Date().toISOString(), transactions: loadData(), settings: loadSettings() }, null, 2);
+    return JSON.stringify({ app: 'Shawn Account Book', exportedAt: new Date().toISOString(), transactions: loadData(), settings: loadSettings() }, null, 2);
   }
   function resetDemo() { saveData(demoTransactions.map(x => normalizeTransaction(x))); return loadData(); }
   function clearData() { saveData([]); return []; }
@@ -112,6 +123,7 @@
     workCategories,
     defaultPayments,
     defaultSettings,
+    defaultTemplates,
     demoTransactions,
     loadData,
     saveData,

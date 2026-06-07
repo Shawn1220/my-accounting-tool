@@ -1,7 +1,7 @@
 {
-  "name": "Shawn 记账本",
-  "short_name": "记账本",
-  "description": "适合 GitHub Pages 部署的轻量、清爽、适合 GitHub Pages 部署的记账本 PWA。",
+  "name": "Shawn 私人记账本",
+  "short_name": "私人记账",
+  "description": "适合 GitHub Pages 部署的私人日常记账 PWA。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,7 +9,17 @@
   "theme_color": "#5bc8bd",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "./assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "./assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

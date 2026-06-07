@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="记账本" />
-  <title>Shawn 记账本</title>
+  <title>Shawn 私人记账本</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
   <link rel="stylesheet" href="./assets/css/style.css" />
@@ -15,12 +15,12 @@
 <body>
   <div id="app" class="app-shell">
     <header class="top-bar">
-      <button id="backBtn" class="icon-btn ghost" type="button" aria-label="返回 Shawn Tools">
-        <span>‹</span>
+      <button id="backBtn" class="icon-btn ghost hidden" type="button" aria-label="返回">
+        <span aria-hidden="true"></span>
       </button>
       <div class="title-wrap">
-        <h1>记账本</h1>
-        <p id="modeHint">独立模式 · GitHub Pages</p>
+        <h1>私人记账本</h1>
+        <p id="modeHint">本地保存 · 私人账本</p>
       </div>
       <div class="top-actions">
         <button id="globalSearchBtn" class="icon-btn" type="button" aria-label="搜索">⌕</button>
@@ -37,6 +37,12 @@
     </header>
 
     <main class="main-content">
+      <section class="month-switcher card" aria-label="月份切换">
+        <button data-month-action="prev" type="button" aria-label="上个月">‹</button>
+        <strong id="monthLabel">2026年6月</strong>
+        <button data-month-action="next" type="button" aria-label="下个月">›</button>
+        <button class="month-current" data-month-action="current" type="button">本月</button>
+      </section>
       <section id="view-home" class="view active" data-view="home">
         <section class="hero-card">
           <div class="hero-top">
@@ -44,24 +50,35 @@
               <span class="eyebrow">本月支出</span>
               <strong id="homeMonthExpense">¥0.00</strong>
             </div>
-            <button id="privacyBtn" class="mini-pill" type="button">显示</button>
+            <button id="privacyBtn" class="mini-pill" type="button">隐藏金额</button>
           </div>
           <div class="metric-grid">
-            <div><span>本月收入</span><b id="homeMonthIncome">¥0.00</b></div>
-            <div><span>本月结余</span><b id="homeMonthBalance">¥0.00</b></div>
+            <div data-income-only><span>本月收入</span><b id="homeMonthIncome">¥0.00</b></div>
+            <div data-income-only><span>本月结余</span><b id="homeMonthBalance">¥0.00</b></div>
             <div><span>今日支出</span><b id="homeTodayExpense">¥0.00</b></div>
           </div>
           <div class="budget-strip">
             <div><span>本月预算</span><b id="homeBudgetText">¥0 / ¥3000</b></div>
-            <div class="budget-track"><i id="homeBudgetBar"></i></div>
+            <div class="budget-track"><i id="homeBudgetBar" class="budget-fill"></i></div>
           </div>
         </section>
 
         <section class="quick-entry-card card">
           <div class="section-head">
-            <div><h2>快速记一笔</h2><p>常用金额和支付方式可以一键带入</p></div>
+            <div><h2>常用模板</h2><p>买烟、早餐、午饭、菜市场和交通等日常消费可以一键带入</p></div>
           </div>
           <div class="quick-row" id="quickAmountHome"></div>
+        </section>
+
+        <section class="quick-text-card card">
+          <div class="section-head compact"><div><h2>一句话记账</h2><p>例如：今天微信买烟64，菜市场现金20.9，午饭支付宝35</p></div></div>
+          <textarea id="quickTextInput" placeholder="输入自然语言账单，先解析预览，再确认保存"></textarea>
+          <div class="quick-text-actions">
+            <button id="parseQuickTextBtn" type="button">解析预览</button>
+            <button id="confirmQuickTextBtn" type="button">确认保存</button>
+            <button id="clearQuickTextBtn" type="button">清空</button>
+          </div>
+          <div id="quickTextPreview" class="quick-preview"></div>
         </section>
 
         <section class="segmented-wrap">
@@ -71,7 +88,7 @@
 
         <section id="homeRecordsPanel" class="panel active">
           <div class="section-head">
-            <div><h2>最近记录</h2><p>左滑可编辑或删除</p></div>
+            <div><h2>最近记录</h2><p>左滑可编辑、复制或删除</p></div>
             <button class="text-btn" data-nav="details" type="button">全部</button>
           </div>
           <div id="recentList" class="record-list"></div>
@@ -90,39 +107,59 @@
           <div><h2>全部明细</h2><p>按日期分组，支持搜索和筛选</p></div>
         </div>
         <div class="search-box">
-          <input id="detailSearch" type="search" placeholder="搜索标题、分类、项目、供应商、备注" />
+          <input id="detailSearch" type="search" placeholder="搜索标题、分类、支付方式、备注" />
         </div>
         <div class="filter-row" id="detailFilters">
           <button class="chip active" data-filter="all" type="button">全部</button>
           <button class="chip" data-filter="expense" type="button">支出</button>
           <button class="chip" data-filter="income" type="button">收入</button>
-          <button class="chip" data-filter="personal" type="button">个人</button>
-          <button class="chip" data-filter="work" type="button">工作</button>
         </div>
         <div id="detailList" class="grouped-list"></div>
       </section>
 
       <section id="view-stats" class="view" data-view="stats">
-        <div class="page-heading"><div><h2>统计分析</h2><p>本月趋势、分类、支付方式和工作支出</p></div></div>
+        <div class="page-heading"><div><h2>统计分析</h2><p id="statsMonthHint">本月趋势、分类和支付方式</p></div></div>
         <div class="stat-overview card">
           <div><span>本月支出</span><b id="statsExpense">¥0.00</b></div>
-          <div><span>本月收入</span><b id="statsIncome">¥0.00</b></div>
-          <div><span>本月结余</span><b id="statsBalance">¥0.00</b></div>
+          <div data-income-only><span>本月收入</span><b id="statsIncome">¥0.00</b></div>
+          <div data-income-only><span>本月结余</span><b id="statsBalance">¥0.00</b></div>
         </div>
         <div class="card chart-card"><div class="section-head compact"><h2>分类占比</h2></div><div id="categoryChart" class="donut-wrap"></div></div>
         <div class="card chart-card"><div class="section-head compact"><h2>支付方式占比</h2></div><div id="paymentBars" class="bar-list"></div></div>
         <div class="card chart-card"><div class="section-head compact"><h2>最近 7 天支出趋势</h2></div><div id="trendChart" class="trend-wrap"></div></div>
-        <div class="card chart-card"><div class="section-head compact"><h2>工作支出状态</h2></div><div id="workStatusBars" class="bar-list"></div></div>
+        <div class="card chart-card"><div class="section-head compact"><h2>本月消费小结</h2></div><div id="personalInsight" class="insight-grid"></div></div>
       </section>
 
       <section id="view-my" class="view" data-view="my">
-        <div class="page-heading"><div><h2>我的</h2><p>外观、数据、分类和 Shawn Tools 状态</p></div></div>
+        <div class="page-heading"><div><h2>我的</h2><p>外观、数据、分类和本地备份</p></div></div>
+        <div class="my-profile card">
+          <div>
+            <span>Shawn 记账本</span>
+            <h3>本地保存</h3>
+            <p>专注日常消费、预算、分类和本地备份</p>
+          </div>
+          <div class="my-profile-stats">
+            <b id="myTotalCount">0</b><span>已记录</span>
+            <b id="myMonthExpense">¥0.00</b><span>本月支出</span>
+          </div>
+        </div>
+
+
+        <div class="data-health card">
+          <div class="section-head compact"><h2>数据健康</h2></div>
+          <div class="health-grid">
+            <div><span>当前记录</span><b id="healthTotalCount">0</b></div>
+            <div><span>最近备份</span><b id="healthBackupTime">暂无</b></div>
+            <div><span>回收站</span><b id="healthRecycleCount">0</b></div>
+          </div>
+        </div>
         <div class="settings-group">
           <h3>基础设置</h3>
           <label class="setting-row"><span>默认支付方式</span><select id="defaultPaymentSelect"></select></label>
           <label class="setting-row"><span>默认打开页面</span><select id="defaultPageSelect"><option value="home">首页</option><option value="details">明细</option><option value="stats">统计</option><option value="my">我的</option></select></label>
           <label class="setting-row"><span>账单显示模式</span><select id="displayModeSelect"><option value="compact">紧凑</option><option value="comfortable">舒适</option></select></label>
-          <label class="setting-row"><span>显示收入</span><input id="showIncomeToggle" type="checkbox" /></label>
+          <label class="setting-row"><span>本月预算</span><input id="monthlyBudgetInput" class="setting-input" type="number" inputmode="decimal" min="0" step="100" placeholder="3000" /></label>
+          <label class="setting-row"><span>显示收入金额</span><input id="showIncomeToggle" type="checkbox" /></label>
         </div>
         <div class="settings-group">
           <h3>主题设置</h3>
@@ -143,26 +180,53 @@
           </div>
         </div>
         <div class="settings-group">
+          <h3>模板管理</h3>
+          <div class="template-form-grid">
+            <input id="templateTitleInput" placeholder="标题：如 买烟" />
+            <input id="templateAmountInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="金额" />
+            <input id="templateCategoryInput" placeholder="分类：如 抽烟" />
+            <input id="templatePaymentInput" placeholder="支付方式：如 微信支付" />
+            <button id="addTemplateBtn" type="button">保存模板</button><button id="cancelTemplateEditBtn" class="ghost-action" type="button">取消编辑</button>
+          </div>
+          <div id="templateList" class="template-list"></div>
+          <div class="action-grid mini-actions"><button id="restoreTemplatesBtn" type="button">恢复默认模板</button></div>
+        </div>
+        <div class="settings-group">
           <h3>分类与支付方式</h3>
           <div class="tag-editor"><label>新增分类</label><div><input id="newCategoryInput" placeholder="例如：停车费" /><button id="addCategoryBtn" type="button">添加</button></div></div>
           <div id="categoryTags" class="tag-list"></div>
           <div class="tag-editor"><label>新增支付方式</label><div><input id="newPaymentInput" placeholder="例如：公司卡" /><button id="addPaymentBtn" type="button">添加</button></div></div>
           <div id="paymentTags" class="tag-list"></div>
+          <div class="action-grid mini-actions">
+            <button id="restoreCategoriesBtn" type="button">恢复默认分类</button>
+            <button id="restorePaymentsBtn" type="button">恢复默认支付方式</button>
+          </div>
         </div>
         <div class="settings-group">
           <h3>数据管理</h3>
           <div class="action-grid">
             <button id="exportBtn" type="button">导出 JSON</button>
             <button id="importBtn" type="button">导入 JSON</button>
+            <button id="exportCsvBtn" type="button">导出全部 CSV</button>
+            <button id="exportMonthCsvBtn" type="button">导出本月 CSV</button>
             <button id="restoreDemoBtn" type="button">恢复示例数据</button>
+            <button id="restoreImportBackupBtn" type="button">恢复导入前备份</button>
+            <button id="createLocalBackupBtn" type="button">创建本地备份</button>
+            <button id="restoreLocalBackupBtn" type="button">恢复本地备份</button>
             <button id="clearDataBtn" class="danger" type="button">清空数据</button>
+            <button id="clearCacheBtn" type="button">清除缓存 / 更新</button>
           </div>
           <input id="importFileInput" type="file" accept="application/json,.json" hidden />
-          <p class="setting-note">自动备份：当前版本使用浏览器 localStorage 保存。云同步仅预留接口，不写入任何密钥。</p>
+          
         </div>
         <div class="settings-group">
-          <h3>Shawn Tools</h3>
-          <div class="sync-card"><span>同步状态</span><b id="syncStatus">独立模式</b></div>
+          <h3>最近删除</h3>
+          <div id="recycleList" class="recycle-list"></div>
+          <div class="action-grid mini-actions"><button id="clearRecycleBtn" class="danger" type="button">清空回收站</button></div>
+        </div>
+        <div class="settings-group">
+          <h3>关于</h3>
+          <div class="sync-card"><span>运行状态</span><b id="syncStatus">独立模式</b></div>
         </div>
         <div class="settings-group">
           <h3>AI 提示词</h3>
@@ -178,10 +242,10 @@
     </main>
 
     <nav class="bottom-nav" aria-label="主导航">
-      <button class="active" data-nav="home" type="button"><span>⌂</span>首页</button>
-      <button data-nav="details" type="button"><span>≡</span>明细</button>
-      <button data-nav="stats" type="button"><span>◌</span>统计</button>
-      <button data-nav="my" type="button"><span>☺</span>我的</button>
+      <button class="active" data-nav="home" type="button"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span>首页</button>
+      <button data-nav="details" type="button"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M6 6h12M6 12h12M6 18h9"/></svg></span>明细</button>
+      <button data-nav="stats" type="button"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M12 4v8l6 3A8 8 0 1 1 12 4z"/></svg></span>统计</button>
+      <button data-nav="my" type="button"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0"/></svg></span>我的</button>
     </nav>
 
     <button id="fabAdd" class="fab" type="button" aria-label="记一笔">＋</button>
@@ -206,7 +270,7 @@
         <input id="amountInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" required />
       </label>
       <div class="quick-row" id="quickAmountSheet"></div>
-      <label class="form-row main-title"><span>标题</span><input id="titleInput" placeholder="例如：早餐、京东采购" required /></label>
+      <label class="form-row main-title"><span>标题</span><input id="titleInput" placeholder="例如：早餐、买烟、菜市场" required /></label>
       <div class="form-block">
         <div class="block-title">账目类型</div>
         <div id="accountTypeOptions" class="chip-grid"></div>
@@ -224,18 +288,34 @@
         <label class="form-row"><span>时间</span><input id="timeInput" type="time" required /></label>
       </div>
       <details id="workDetails" class="work-details">
-        <summary>工作信息 / 更多信息</summary>
-        <label class="form-row"><span>项目</span><input id="projectInput" placeholder="例如：M013" /></label>
-        <label class="form-row"><span>供应商</span><input id="supplierInput" placeholder="例如：京东 / 淘宝 / 供应商名称" /></label>
-        <label class="form-row"><span>发票状态</span><select id="invoiceStatusInput"><option>无需开票</option><option>待开票</option><option>已开票</option></select></label>
-        <label class="form-row"><span>报销状态</span><select id="reimbursementStatusInput"><option>无需报销</option><option>待报销</option><option>已报销</option></select></label>
-        <label class="form-row"><span>合同状态</span><select id="contractStatusInput"><option value="">无</option><option>无合同</option><option>待签合同</option><option>已签合同</option></select></label>
-        <label class="form-row"><span>合同号</span><input id="contractNoInput" placeholder="合同号" /></label>
-        <label class="form-row textarea"><span>备注</span><textarea id="noteInput" placeholder="补充说明"></textarea></label>
+        <summary>更多信息（可选）</summary>
+        <label class="form-row"><span>标签 / 场景</span><input id="projectInput" placeholder="例如：家庭、出行、购物" /></label>
+        <label class="form-row"><span>商家</span><input id="supplierInput" placeholder="例如：京东、菜市场、便利店" /></label>
+        <label class="form-row textarea"><span>备注</span><textarea id="noteInput" placeholder="可选"></textarea></label>
+        <input id="invoiceStatusInput" type="hidden" value="无需开票" />
+        <input id="reimbursementStatusInput" type="hidden" value="无需报销" />
+        <input id="contractStatusInput" type="hidden" value="" />
+        <input id="contractNoInput" type="hidden" />
       </details>
+      <button class="sheet-save-btn" type="submit">保存账单</button>
       <div class="sheet-safe-space"></div>
     </form>
   </aside>
+
+
+  <div id="modalOverlay" class="modal-overlay" aria-hidden="true"></div>
+  <section id="importPreviewModal" class="app-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2>导入预览</h2>
+      <button id="cancelImportPreviewBtn" class="icon-btn ghost" type="button" aria-label="关闭">×</button>
+    </div>
+    <div id="importPreviewSummary" class="import-summary"></div>
+    <div id="importPreviewList" class="import-preview-list"></div>
+    <div class="modal-actions">
+      <button id="confirmImportPreviewBtn" class="primary-action" type="button">确认导入</button>
+      <button id="cancelImportPreviewBottomBtn" type="button">取消</button>
+    </div>
+  </section>
 
   <div id="toast" class="toast" role="status"></div>
 

@@ -1,79 +1,76 @@
-# Shawn 记账本 GitHub Pages V1-2
+# Shawn 私人记账本 GitHub Pages
 
-这是一个可以直接部署到 GitHub Pages 的静态记账本 Web App / PWA。
+这是一个可以直接部署到 GitHub Pages 的私人记账本 Web App。项目使用原生 HTML、CSS、JavaScript 编写，不依赖外部 CDN、不需要后端服务器、不需要数据库服务器。
 
-## V1-2 更新重点
+## 主要功能
 
-- 首页视觉优化：主卡片缩小，默认主题改为更清爽的薄荷绿。
-- 最近记录和全部明细左滑删除：点击删除后直接删除，不再二次弹窗，并提供撤销提示。
-- 右上角更多按钮：改为二级菜单，不再直接跳转设置。
-- 底部导航：`设置` 改为 `我的`，设置功能收纳到我的页面。
-- 主题增强：支持跟随系统 / 浅色 / 深色，同时支持薄荷绿、天空蓝、蓝紫、奶油橙、樱花粉、石墨灰主题色。
-- 统计页圆环图修复：强制正圆 SVG，不再出现椭圆或异常缺口。
-- 保留 V1-1 的 GitHub Pages、PWA、localStorage、JSON 导入导出、Shawn Tools 预留接口。
-
-## 文件结构
-
-```text
-account-book-app/
-├── index.html
-├── README.md
-├── manifest.json
-├── service-worker.js
-├── .nojekyll
-├── assets/
-│   ├── css/style.css
-│   ├── js/app.js
-│   ├── js/storage.js
-│   ├── js/ui.js
-│   ├── js/charts.js
-│   └── icons/
-│       ├── icon-192.png
-│       └── icon-512.png
-└── data/demo-data.json
-```
+- 首页月度支出、今日支出、预算进度
+- 新增、编辑、复制、删除账单
+- 最近删除 / 回收站恢复
+- 常用模板管理
+- 一句话记账解析与预览
+- 全部明细搜索和筛选
+- 分类占比、支付方式占比、最近 7 天趋势
+- 浅色 / 深色 / 跟随系统
+- 多主题色
+- JSON 导入导出
+- CSV 导出
+- 导入前自动备份
+- 手动本地备份与恢复
+- PWA 添加到主屏幕
+- Service Worker 基础缓存
 
 ## GitHub Pages 部署方法
 
-1. 新建 GitHub 仓库。
-2. 解压 zip 文件。
-3. 进入 `account-book-app` 文件夹。
-4. 把文件夹内的所有文件上传到 GitHub 仓库根目录。
-5. 打开仓库 `Settings`。
-6. 找到 `Pages`。
-7. Source 选择 `Deploy from a branch`。
-8. Branch 选择 `main / root`。
-9. 保存后等待 GitHub Pages 生成访问网址。
+1. 新建一个 GitHub 仓库。
+2. 解压本项目压缩包。
+3. 进入项目文件夹，把里面的所有文件上传到仓库根目录。
+4. 打开仓库 Settings。
+5. 找到 Pages。
+6. Source 选择 Deploy from a branch。
+7. Branch 选择 main，目录选择 /root。
+8. 保存后等待 GitHub 生成访问网址。
 
-注意：仓库根目录需要直接看到 `index.html`，不要只上传 zip，也不要让 `index.html` 留在二级目录。
+仓库根目录应直接看到：
 
-## 数据说明
-
-本工具默认使用浏览器 `localStorage` 保存数据，不依赖数据库服务器，不写入任何 API Key、GitHub Token 或 Google Token。
-
-## Shawn Tools 预留接口
-
-页面加载后会暴露：
-
-```js
-window.ShawnToolsAccounting = {
-  getData(),
-  setData(data),
-  exportJSON(),
-  importJSON(json),
-  getSummary(),
-  setTheme(theme),
-  openAddEntry(),
-  resetDemoData()
-}
+```text
+index.html
+README.md
+manifest.json
+service-worker.js
+.nojekyll
+assets/
+data/
 ```
 
-## 建议测试项
+不要只上传 zip，也不要让 `index.html` 留在二级文件夹里。
 
-- 首页新增记录。
-- 最近记录左滑删除和撤销。
-- 明细页搜索和筛选。
-- 统计页分类圆环、支付方式排行和趋势图。
-- 我的页面主题模式和主题色切换。
-- JSON 导入导出。
-- iPhone Safari 添加到主屏幕后打开。
+## 数据保存
+
+本工具默认使用浏览器 localStorage 保存数据。数据只保存在当前浏览器中，不会上传到服务器。
+
+建议定期使用：
+
+- 导出 JSON
+- 导出 CSV
+- 创建本地备份
+
+更换手机、清理浏览器数据或更换浏览器前，请先导出 JSON 备份。
+
+## 更新后仍显示旧页面
+
+手机端 PWA 可能会缓存旧文件。可以在“我的 → 数据管理”中点击“清除缓存 / 更新”，也可以在访问网址后加一个查询参数，例如：
+
+```text
+?refresh=1
+```
+
+## 技术说明
+
+- 原生 HTML + CSS + JavaScript
+- CSS variables 管理主题
+- prefers-color-scheme 支持跟随系统
+- localStorage 保存数据
+- SVG / CSS 绘制图表
+- 所有资源均使用相对路径
+- 不写入任何 API Key、GitHub Token 或 Google Token
